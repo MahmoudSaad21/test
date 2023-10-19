@@ -9,7 +9,16 @@ int main(void) {
     char input[256], *token, *args[256];
     int i, arg_count;
     pid_t child_pid;
+    int interactive = isatty(STDIN_FILENO);
     while (1) {
+        if (interactive) {
+            char prompt[] = "$ ";
+            size_t prompt_len = sizeof(prompt) - 1;
+            if (write(STDOUT_FILENO, prompt, prompt_len) == -1) {
+                perror("write");
+                exit(EXIT_FAILURE);
+            }
+        }
         i = 0;
 
         while (1) {
@@ -23,6 +32,10 @@ int main(void) {
         }
 
         if (i == 0) {
+            if (interactive) {
+                if (write(STDOUT_FILENO, "\n", 1) == -1)
+                perror("write");
+                }
             break;
         }
 
@@ -42,6 +55,7 @@ int main(void) {
             _exit(EXIT_FAILURE);
         } else if (child_pid == 0) {
             execvp(args[0], args);
+
             perror("execvp");
             _exit(EXIT_FAILURE);
         } else {
