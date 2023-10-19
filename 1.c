@@ -17,6 +17,13 @@ size_t strlen_custom(const char *str) {
         s++;
     return s - str;
 }
+int areStringsEqual(const char *str1, const char *str2) {
+    while (*str1 != '\0' && *str2 != '\0' && *str1 == *str2) {
+        str1++;
+        str2++;
+    }
+    return *str1 == '\0' && *str2 == '\0';
+}
 
 int main(void) {
     char input[256], *error_message, exec_error[256], *token, *args[256];
@@ -54,7 +61,9 @@ int main(void) {
             }
             break;
         }
-
+	if (areStringsEqual(input, "exit")) {
+            exit(0);
+        }
         token = strtok(input, "\n");
         while (token != NULL) {
             char *command = token;
@@ -76,11 +85,9 @@ int main(void) {
                 execvp(args[0], args);
                 error_message = "./hsh: 1: ";
 		strcpy_custom(exec_error, error_message);
+		strcpy_custom(exec_error, args[0]);
+		strcpy_custom(exec_error, ": not found\n");
 		write(STDERR_FILENO, exec_error, strlen_custom(exec_error));
-                strcpy_custom(exec_error, args[0]);
-                write(STDERR_FILENO, exec_error, strlen_custom(exec_error));
-                strcpy_custom(exec_error, ": not found\n");
-                write(STDERR_FILENO, exec_error, strlen_custom(exec_error));
 		exit(127);
             } else {
                 int status;
