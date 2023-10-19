@@ -5,15 +5,28 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+char *strcpy_custom(char *dest, const char *src) {
+    while ((*dest++ = *src++))
+        ;
+    return dest - 1;
+}
+
+size_t strlen_custom(const char *str) {
+    const char *s = str;
+    while (*s)
+        s++;
+    return s - str;
+}
+
 int main(void) {
-    char input[256], *token, *args[256];
+    char input[256], *error_message, exec_error[256], *token, *args[256];
     int i, arg_count;
     pid_t child_pid;
     int interactive = isatty(STDIN_FILENO);
     while (1) {
         if (interactive) {
-            char prompt[] = "$ ";
-            size_t prompt_len = sizeof(prompt) - 1;
+            char prompt[] = "($) ";
+            size_t prompt_len = 4;
             if (write(STDOUT_FILENO, prompt, prompt_len) == -1) {
                 perror("write");
                 exit(EXIT_FAILURE);
@@ -33,34 +46,47 @@ int main(void) {
 
         if (i == 0) {
             if (interactive) {
-                if (write(STDOUT_FILENO, "\n", 1) == -1)
-                perror("write");
+                char newline = '\n';
+                if (write(STDOUT_FILENO, &newline, 1) == -1) {
+                    perror("write");
+                    exit(EXIT_FAILURE);
                 }
+            }
             break;
         }
 
-        token = strtok(input, " ");
-        arg_count = 0;
-
+        token = strtok(input, "\n");
         while (token != NULL) {
-            args[arg_count] = token;
-            arg_count++;
-            token = strtok(NULL, " ");
-        }
-        args[arg_count] = NULL;
+            char *command = token;
+            arg_count = 0;
 
-        child_pid = fork();
-        if (child_pid == -1) {
-            perror("fork");
-            _exit(EXIT_FAILURE);
-        } else if (child_pid == 0) {
-            execvp(args[0], args);
+            token = strtok(command, " ");
+            while (token != NULL) {
+                args[arg_count] = token;
+                arg_count++;
+                token = strtok(NULL, " ");
+            }
+            args[arg_count] = NULL;
 
-            perror("execvp");
-            _exit(EXIT_FAILURE);
-        } else {
-            int status;
-            waitpid(child_pid, &status, 0);
+            child_pid = fork();
+            if (child_pid == -1) {
+                perror("fork");
+                exit(EXIT_FAILURE);
+            } else if (child_pid == 0) {
+                execvp(args[0], args);
+                error_message = "./hsh: 1: ";
+		strcpy_custom(exec_error, error_message);
+		write(STDERR_FILENO, exec_error, strlen_custom(exec_error));
+                strcpy_custom(exec_error, args[0]);
+                write(STDERR_FILENO, exec_error, strlen_custom(exec_error));
+                strcpy_custom(exec_error, ": not found\n");
+                write(STDERR_FILENO, exec_error, strlen_custom(exec_error));
+		exit(127);
+            } else {
+                int status;
+                waitpid(child_pid, &status, 0);
+            }
+            token = strtok(NULL, "\n");
         }
     }
 
