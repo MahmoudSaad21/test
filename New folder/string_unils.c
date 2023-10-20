@@ -1,5 +1,4 @@
-string_utils.c
-#include "shell_functions.h"
+#include "main.h"
 
 char *strcpy_custom(char *dest, const char *src) {
     while ((*dest++ = *src++))
